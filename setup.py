@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='RelaDB',
-    version='1.0.0',
+    version='2.0.0',
     author='Mulham Alamry',
     author_email='mulhamreacts@gmail.com',
     description='A fast and lightweight relational db',
