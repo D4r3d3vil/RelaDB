@@ -2,6 +2,34 @@ import json
 import sqlite3
 from typing import Dict, List, Callable, Union, Any, Type, Optional
 
+def serialize(value: Any) -> Any:
+        """
+        Serializes a value into a JSON string if it's a dictionary or list, otherwise returns the value unchanged.
+
+        Args:
+            value (Any): The value to serialize.
+
+        Returns:
+            Any: The serialized value or the original value.
+        """
+        if isinstance(value, (dict, list)):
+            return json.dumps(value)
+        return value
+
+def deserialize(value: Any) -> Any:
+    """
+    Deserializes a JSON string back into a Python dictionary or list if applicable, otherwise returns the value unchanged.
+
+    Args:
+        value (Any): The value to deserialize.
+
+    Returns:
+        Any: The deserialized Python object or the original value.
+    """
+    try: return json.loads(value)
+    except (TypeError, json.JSONDecodeError):
+        return value
+
 class Field:
     def __init__(self, name: str, data_type: Type) -> None:
         """
@@ -24,7 +52,7 @@ class Row:
         """
         self.fields: Dict[str, Any] = {}
         for field_name, field_value in kwargs.items():
-            self.fields[field_name] = self._serialize(field_value)
+            self.fields[field_name] = serialize(field_value)
     
     def get(self, field: str = '') -> Union[Dict[str, Any], Any]:
         """
@@ -37,8 +65,8 @@ class Row:
             Union[Dict[str, Any], Any]: The value of the specified field, or a dictionary of all fields and their values.
         """
         if field == '':
-            return {i: self._deserialize(self.fields[i]) for i in self.fields}
-        return self._deserialize(self.fields[field])
+            return {i: deserialize(self.fields[i]) for i in self.fields}
+        return deserialize(self.fields[field])
 
     def add_field(self, field_name: str, field_value: Any) -> None:
         """
@@ -48,36 +76,7 @@ class Row:
             field_name (str): The name of the field to add or update.
             field_value (Any): The value of the field.
         """
-        self.fields[field_name] = self._serialize(field_value)
-
-    def _serialize(self, value: Any) -> Any:
-        """
-        Serializes a value into a JSON string if it's a dictionary or list, otherwise returns the value unchanged.
-
-        Args:
-            value (Any): The value to serialize.
-
-        Returns:
-            Any: The serialized value or the original value.
-        """
-        if isinstance(value, (dict, list)):
-            return json.dumps(value)
-        return value
-
-    def _deserialize(self, value: Any) -> Any:
-        """
-        Deserializes a JSON string back into a Python dictionary or list if applicable, otherwise returns the value unchanged.
-
-        Args:
-            value (Any): The value to deserialize.
-
-        Returns:
-            Any: The deserialized Python object or the original value.
-        """
-        try:
-            return json.loads(value)
-        except (TypeError, json.JSONDecodeError):
-            return value
+        self.fields[field_name] = serialize(field_value)
 
 class Table:
     def __init__(self, name: str) -> None:
@@ -262,7 +261,7 @@ class Database:
             for row in table._rows:
                 columns = ", ".join(row.fields.keys())
                 placeholders = ", ".join(["?" for _ in row.fields])
-                values = [self._serialize(value) for value in row.fields.values()]
+                values = [serialize(value) for value in row.fields.values()]
                 cursor.execute(f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders})", values)
 
         connection.commit()
@@ -286,12 +285,16 @@ class Database:
             fields_dict = {}
             for col in columns:
                 col_name, col_type = col[1], col[2]
-                fields_dict[col_name] = self.get_python_type(col_type)
+                if col_type == "JSON":
+                    field_type = Union[list, dict]
+                else:
+                    field_type = float if col_type == "REAL" else int if col_type == "INTEGER" else str
+                fields_dict[col_name] = field_type
 
             table = self.create(table_name, fields_dict)
             cursor.execute(f"SELECT * FROM {table_name}")
             rows = cursor.fetchall()
             for row in rows:
-                kwargs = {columns[i][1]: self._deserialize(row[i], fields_dict[columns[i][1]]) for i in range(len(columns))}
+                kwargs = {columns[i][1]: deserialize(row[i]) for i in range(len(columns))}
                 table.add_row(**kwargs)
         connection.close()
