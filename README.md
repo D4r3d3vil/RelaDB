@@ -2,6 +2,13 @@
 
 🔥 RelaDB is a lightweight set of classes for a relational database system designed for simplicity and speed. It integrates with SQLite and provides an easy-to-use API for managing database schemas, tables, and records in Python.
 
+## Installation
+
+Installation form pip is recommended: 
+```bash
+pip install relaDB
+```
+
 ## Classes and Methods
 
 #### `Field`
@@ -93,23 +100,80 @@ Saves the database schema and data to the SQLite file specified in the `db_file`
 
 Loads the database schema and data from the SQLite file specified in the `db_file` attribute.
 
-## Usage Example
+# Usage Example
+
+## Getting Started
+
+Let's start by creating a simple database and adding some tables to it.
 
 ```python
 from relaDB import Database
 
-# Initialize database
+# Initialize the database
 db = Database()
 
-# Create a table
-users = db.create("users", {"name": str, "age": int})
+# Create a table for storing user data
+users_table = db.create("users", {"name": str, "age": int})
 
-# Add a row to the table
-users.add_row(name="Alice", age=30)
-
-# Find a row in the table
-user = users.find(lambda row: row.get("name") == "Alice")[0]
-print(user.get())
+# Add some users to the table
+users_table.add_row(name="Alice", age=30)
+users_table.add_row(name="Bob", age=25)
+users_table.add_row(name="Jimmy", age=16)
 ```
+
+## Retrieving Data
+
+Now, let's retrieve data from the `users` table.
+
+```python
+# Find a user by name
+alice = users_table.find(lambda row: row.get("name") == "Alice")[0]
+print(alice.get())  # Output: {'name': 'Alice', 'age': 30}
+
+# Find users older than 18
+adults = users_table.find(lambda row: row.get("age") > 18)
+for user in adults:
+    print(user.get())  # Output: {'name': 'Alice', 'age': 30}, {'name': 'Bob', 'age': 25}
+```
+
+## Updating Data
+
+We can also update or add in existing records in the table.
+
+```python
+# Update Alice's age
+alice.add_field("age", 31)
+print(alice.get())  # Output: {'name': 'Alice', 'age': 31}
+```
+
+## Deleting Data
+
+Deleting records from the table is straightforward as well.
+
+```python
+# Delete users younger than 18
+users_table.delete_row(lambda row: row.get("age") < 18)
+```
+
+## Advanced Usage
+
+Rela DB supports more advanced operations such as deleting tables, saving and loading databases from files, and more. For now, the only extension supported is sqlite.
+
+```python
+# Save the database to a file
+db.db_file = "users.sqlite3"
+db.save()
+```
+
+Once you have saved it, you can load the database:
+
+```python
+# Load the database from a file
+db = Database('users.sqlite3') # only do this if it's in another file or you haven't called Database()
+db.load()
+for user in db.get('users').find():
+    print(user.get()) # This is left empty to get the entire row if you would like to get a specific value of the row such as name or age, pass it in as a parameter.
+```
+
 
 Happy programming!
